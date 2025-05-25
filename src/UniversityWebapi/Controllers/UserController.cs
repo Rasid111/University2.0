@@ -30,26 +30,6 @@ namespace UniversityWebapi.Controllers
         private readonly SignInManager<User> _signInManager = signInManager;
         private readonly JwtTokenService _jwtTokenService = jwtTokenService;
 
-        [HttpGet]
-        public async Task<IActionResult> CheckToken(string token)
-        {
-            try
-            {
-                return Ok(await _jwtTokenService.ReadJwtToken(token));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-                throw;
-            }
-        }
-        [HttpGet]
-        [Authorize]
-        public IActionResult CheckIfAuthorized()
-        {
-            return Ok("You are authorized");
-        }
-
         [HttpPost]
         public async Task<IActionResult> Login(LoginDto dto)
         {
