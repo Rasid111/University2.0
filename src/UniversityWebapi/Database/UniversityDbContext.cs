@@ -19,7 +19,7 @@ namespace UniversityWebapi.Database
         public DbSet<Group> Groups { get; set; }
         public DbSet<Grade> Grades { get; set; }
         public DbSet<Subject> Subjects { get; set; }
-        public DbSet<Test> Tests{ get; set; }
+        public DbSet<Test> Tests { get; set; }
         public DbSet<Question> Questions { get; set; }
         public DbSet<QuestionAnswer> QuestionAnswer { get; set; }
         public DbSet<TestResult> TestResults { get; set; }
@@ -37,6 +37,16 @@ namespace UniversityWebapi.Database
             builder
                 .Entity<RefreshToken>()
                 .HasKey(rt => rt.Token);
+            builder
+                .Entity<User>()
+                .HasOne(u => u.StudentProfile)
+                .WithOne(sp => sp.User)
+                .HasForeignKey<StudentProfile>(sp => sp.UserId);
+            builder
+                .Entity<User>()
+                .HasOne(u => u.TeacherProfile)
+                .WithOne(tp => tp.User)
+                .HasForeignKey<TeacherProfile>(tp => tp.UserId);
         }
     }
 }

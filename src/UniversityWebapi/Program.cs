@@ -1,4 +1,5 @@
 
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UniversityWebapi.Database;
@@ -19,7 +20,12 @@ namespace UniversityWebapi
             builder.Services.InitAuth(builder.Configuration);
             builder.Services.InitSwagger();
             builder.Services.InitCors();
-            builder.Services.AddControllers();
+
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+                });
             builder.Services.AddOpenApi();
             builder.Services.AddAuthorization();
             builder.Services.AddEndpointsApiExplorer();
@@ -46,13 +52,13 @@ namespace UniversityWebapi
 
             app.UseSwagger();
             app.UseSwaggerUI();
-            
+
             app.UseHttpsRedirection();
-            
+
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
-            
+
             app.UseCors("University");
 
             app.Run();

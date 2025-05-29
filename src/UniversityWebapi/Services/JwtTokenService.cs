@@ -10,35 +10,20 @@ namespace UniversityWebapi.Services
 {
     public class JwtTokenService(JwtTokenRepository jwtTokenRepository, IOptionsSnapshot<JwtOptions> jwtOptionsSnapshot)
     {
-        private readonly JwtTokenRepository _jwtTokenRepository = jwtTokenRepository;
-        private readonly JwtOptions _jwtOptions = jwtOptionsSnapshot.Value;
+        readonly JwtTokenRepository _jwtTokenRepository = jwtTokenRepository;
+        readonly JwtOptions _jwtOptions = jwtOptionsSnapshot.Value;
 
-        public async Task<RefreshToken> UpdateRefreshToken(Guid token, string userId)
+        public async Task<RefreshToken> UpdateRefreshTokenAsync(Guid token, string userId)
         {
             var refreshToken = await _jwtTokenRepository.GetRefreshToken(token, userId) ?? throw new KeyNotFoundException("Refresh token not found!");
             await _jwtTokenRepository.DeleteRefreshToken(refreshToken);
-            return await CreateRefreshToken(userId);
+            return await CreateRefreshTokenAsync(userId);
         }
-        public async Task<Claim?> ReadJwtToken(string tokenStr)
+        public Claim? ReadIdFromJwtToken(string tokenStr)
         {
             var handler = new JwtSecurityTokenHandler();
-            var validationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = _jwtOptions.Issuer,
-                ValidateAudience = true,
-                ValidAudience = _jwtOptions.Audience,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(_jwtOptions.KeyInBytes)
-            };
-            var validationResult = await handler.ValidateTokenAsync(tokenStr, validationParameters);
-            if (!validationResult.IsValid)
-            {
-                throw new SecurityTokenException("Invalid token");
-            }
             var token = handler.ReadJwtToken(tokenStr);
-            Claim? idClaim = token.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.NameIdentifier);
+            Claim? idClaim = token.Claims.FirstOrDefault(claim => claim.Type == "Id");
             return idClaim;
         }
 
@@ -59,7 +44,7 @@ namespace UniversityWebapi.Services
             return handler.WriteToken(token);
         }
 
-        public async Task<RefreshToken> CreateRefreshToken(string userId)
+        public async Task<RefreshToken> CreateRefreshTokenAsync(string userId)
         {
             var token = Guid.NewGuid();
             var refreshToken = new RefreshToken

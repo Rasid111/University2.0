@@ -17,10 +17,18 @@ namespace UniversityWebapi.Extensions
         public static void InitServices(this IServiceCollection serviceCollection)
         {
             serviceCollection.AddScoped<JwtTokenService>();
+            serviceCollection.AddScoped<FacultyService>();
+            serviceCollection.AddScoped<GroupService>();
+            serviceCollection.AddScoped<StudentProfileService>();
+            serviceCollection.AddScoped<MajorService>();
         }
         public static void InitRepositories(this IServiceCollection serviceCollection)
         {
             serviceCollection.AddScoped<JwtTokenRepository>();
+            serviceCollection.AddScoped<FacultyRepository>();
+            serviceCollection.AddScoped<GroupRepository>();
+            serviceCollection.AddScoped<StudentProfileRepository>();
+            serviceCollection.AddScoped<MajorRepository>();
         }
         public static void InitDatabase(this IServiceCollection serviceCollection, IConfiguration configuration)
         {
@@ -31,7 +39,6 @@ namespace UniversityWebapi.Extensions
 
             serviceCollection.AddIdentity<User, IdentityRole>(options =>
                 {
-
                     options.User.RequireUniqueEmail = true;
                 })
                 .AddEntityFrameworkStores<UniversityDbContext>();

@@ -12,8 +12,8 @@ using UniversityWebapi.Database;
 namespace UniversityWebapi.Migrations
 {
     [DbContext(typeof(UniversityDbContext))]
-    [Migration("20250525021049_Add university tables")]
-    partial class Adduniversitytables
+    [Migration("20250525061118_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -758,14 +758,14 @@ namespace UniversityWebapi.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
-                    b.Property<int>("StudentProfileId")
+                    b.Property<int?>("StudentProfileId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Surname")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("TeacherProfileId")
+                    b.Property<int?>("TeacherProfileId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("TwoFactorEnabled")
@@ -1113,15 +1113,11 @@ namespace UniversityWebapi.Migrations
                 {
                     b.HasOne("UniversityWebapi.Models.StudentProfile", "StudentProfile")
                         .WithMany()
-                        .HasForeignKey("StudentProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("StudentProfileId");
 
                     b.HasOne("UniversityWebapi.Models.TeacherProfile", "TeacherProfile")
                         .WithMany()
-                        .HasForeignKey("TeacherProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("TeacherProfileId");
 
                     b.Navigation("StudentProfile");
 

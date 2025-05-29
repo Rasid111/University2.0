@@ -6,7 +6,7 @@ namespace UniversityWebapi.Repositories
 {
     public class JwtTokenRepository(UniversityDbContext dbContext)
     {
-        private readonly UniversityDbContext _dbContext = dbContext;
+        readonly UniversityDbContext _dbContext = dbContext;
         public async Task CreateRefreshToken(RefreshToken token)
         {
             await _dbContext.RefreshTokens.AddAsync(token);
@@ -19,6 +19,11 @@ namespace UniversityWebapi.Repositories
         public async Task DeleteRefreshToken(RefreshToken refreshToken)
         {
             _dbContext.RefreshTokens.Remove(refreshToken);
+            await _dbContext.SaveChangesAsync();
+        }
+        public async Task DeleteRefreshTokensByUserId(string id)
+        {
+            _dbContext.RefreshTokens.RemoveRange(_dbContext.RefreshTokens.Where(rt => rt.UserId == id));
             await _dbContext.SaveChangesAsync();
         }
     }

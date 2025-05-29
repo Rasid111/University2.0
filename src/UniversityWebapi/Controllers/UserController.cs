@@ -1,19 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using UniversityWebapi.Database;
 using UniversityWebapi.Dtos.User;
 using UniversityWebapi.Models;
-using UniversityWebapi.Options;
 using UniversityWebapi.Services;
 
 namespace UniversityWebapi.Controllers
@@ -30,10 +22,22 @@ namespace UniversityWebapi.Controllers
         private readonly SignInManager<User> _signInManager = signInManager;
         private readonly JwtTokenService _jwtTokenService = jwtTokenService;
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUserById(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            return Ok(user);
+        }
+
         [HttpPost]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            var foundUser = await _userManager.FindByEmailAsync(dto.Login);
+            var foundUser = await _userManager.FindByEmailAsync(dto.Email);
 
             if (foundUser == null)
             {
@@ -51,22 +55,23 @@ namespace UniversityWebapi.Controllers
             var roles = await _userManager.GetRolesAsync(foundUser);
 
             var claims = roles
-                .Select(roleStr => new Claim(ClaimTypes.Role, roleStr))
-                .Append(new Claim(ClaimTypes.NameIdentifier, foundUser.Id))
-                .Append(new Claim(ClaimTypes.Email, foundUser.Email!))
-                .Append(new Claim(ClaimTypes.Name, foundUser.Name))
-                .Append(new Claim(ClaimTypes.Surname, foundUser.Surname))
-                .Append(new Claim("StudentProfielId", Convert.ToString(foundUser.StudentProfileId)))
-                .Append(new Claim("TeacherProfileId", Convert.ToString(foundUser.TeacherProfileId)));
+                .Select(roleStr => new Claim("Role", roleStr))
+                .Append(new Claim("Id", foundUser.Id))
+                .Append(new Claim("Email", foundUser.Email!))
+                .Append(new Claim("Name", foundUser.Name))
+                .Append(new Claim("Surname", foundUser.Surname))
+                .Append(new Claim("ProfilePictureUrl", foundUser.ProfilePictureUrl ?? ""))
+                .Append(new Claim("StudentProfileId", Convert.ToString(foundUser.StudentProfileId) ?? ""))
+                .Append(new Claim("TeacherProfileId", Convert.ToString(foundUser.TeacherProfileId) ?? ""));
 
             return Ok(new
             {
-                refresh = _jwtTokenService.CreateRefreshToken(foundUser.Id),
+                refresh = (await _jwtTokenService.CreateRefreshTokenAsync(foundUser.Id)).Token,
                 access = _jwtTokenService.CreateAccessToken(claims)
             });
         }
         [HttpPost]
-        public async Task<IActionResult> Registration(RegisterDto dto)
+        public async Task<IActionResult> Register(RegisterDto dto)
         {
             var newUser = new User()
             {
@@ -85,9 +90,54 @@ namespace UniversityWebapi.Controllers
 
             return Ok();
         }
+        [HttpPatch]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile(UserUpdateDto dto)
+        {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
+
+            if (userId is null)
+            {
+                return base.StatusCode(401);
+            }
+
+            User? foundUser = await _userManager.FindByIdAsync(userId);
+
+            if (foundUser is null)
+            {
+                return BadRequest($"User not found by id: '{userId}'");
+            }
+
+            if (!await _userManager.CheckPasswordAsync(foundUser, dto.Password))
+            {
+                return BadRequest("Incorrect password");
+            }
+
+            foundUser.Name = dto.Name ?? foundUser.Name;
+            foundUser.Surname = dto.Surname ?? foundUser.Surname;
+            foundUser.ProfilePictureUrl = dto.ProfilePictureUrl ?? foundUser.ProfilePictureUrl;
+
+            if (!string.IsNullOrEmpty(dto.NewPassword))
+            {
+                var passwordResult = await _userManager.ChangePasswordAsync(foundUser, dto.Password, dto.NewPassword);
+                if (!passwordResult.Succeeded)
+                {
+                    return base.BadRequest(passwordResult.Errors);
+                }
+            }
+
+            var result = await _userManager.UpdateAsync(foundUser);
+
+            if (!result.Succeeded)
+            {
+                return base.BadRequest(result.Errors);
+            }
+
+            return Ok();
+        }
         [HttpPut]
-        [ActionName("Token")]
-        public async Task<IActionResult> UpdateToken([Required] Guid refresh)
+        [ActionName("Refresh")]
+        public async Task<IActionResult> UpdateToken([Required] Guid token)
         {
             var tokenStr = HttpContext.Request.Headers.Authorization.FirstOrDefault();
 
@@ -101,11 +151,11 @@ namespace UniversityWebapi.Controllers
                 tokenStr = tokenStr["Bearer ".Length..];
             }
 
-            Claim? idClaim = await _jwtTokenService.ReadJwtToken(tokenStr);
+            Claim? idClaim = _jwtTokenService.ReadIdFromJwtToken(tokenStr);
 
             if (idClaim is null)
             {
-                return BadRequest($"Token has no claim with type '{ClaimTypes.NameIdentifier}'");
+                return BadRequest($"Token has no claim with type 'Id'");
             }
 
             var userId = idClaim.Value;
@@ -122,25 +172,22 @@ namespace UniversityWebapi.Controllers
                 var roles = await _userManager.GetRolesAsync(foundUser);
                 var claims = roles
                     .Select(roleStr => new Claim(ClaimTypes.Role, roleStr))
-                    .Append(new Claim(ClaimTypes.NameIdentifier, foundUser.Id))
-                    .Append(new Claim(ClaimTypes.Email, foundUser.Email!))
-                    .Append(new Claim(ClaimTypes.Name, foundUser.Name))
-                    .Append(new Claim(ClaimTypes.Surname, foundUser.Surname))
-                    .Append(new Claim("StudentProfielId", Convert.ToString(foundUser.StudentProfileId)))
-                    .Append(new Claim("TeacherProfileId", Convert.ToString(foundUser.TeacherProfileId)));
+                    .Append(new Claim("Id", foundUser.Id))
+                    .Append(new Claim("Email", foundUser.Email!))
+                    .Append(new Claim("Name", foundUser.Name))
+                    .Append(new Claim("Surname", foundUser.Surname))
+                    .Append(new Claim("ProfilePictureUrl", foundUser.ProfilePictureUrl ?? ""))
+                    .Append(new Claim("StudentProfileId", Convert.ToString(foundUser.StudentProfileId) ?? ""))
+                    .Append(new Claim("TeacherProfileId", Convert.ToString(foundUser.TeacherProfileId) ?? ""));
                 return Ok(new
                 {
                     access = _jwtTokenService.CreateAccessToken(claims),
-                    refresh = await _jwtTokenService.UpdateRefreshToken(refresh, foundUser.Id)
+                    refresh = (await _jwtTokenService.UpdateRefreshTokenAsync(token, foundUser.Id)).Token
                 });
             }
-            catch (SecurityTokenException ex)
+            catch (Exception ex)
             {
-                return BadRequest(ex.Message);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return BadRequest(ex.Message);
+                return StatusCode(500, ex.Message);
             }
         }
     }

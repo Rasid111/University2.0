@@ -1,0 +1,9 @@
+@use 'base';
+
+#navbar {
+    background-color: base.$main-bg-color;
+    height: 75px;
+    #ProfilePic {
+        height: 50px;
+    }
+}
